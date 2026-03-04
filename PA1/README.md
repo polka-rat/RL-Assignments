@@ -7,6 +7,23 @@
 conda env create -f env.yml
 conda activate rl_pa1
 ```
+## Q1 - Gridworld and Value Iteration
+- `gridworld.ipynb` - Main notebook with all the implementations
+
+### Main Functions
+
+#### Value Function
+```python
+gridWorld[i,j,k] = value_func(state,gamma, gridWorld, smoke_penalty)
+```
+
+#### Policy Iteration
+```python
+gridWorld=policy_iteration(gamma=0.95,theta= 0.01,smoke_penalty=-10)
+```
+
+### Outputs
+All outputs are available within `gridworld.ipynb`, run notebook to observe all the different cases mentioned in the assignment
 
 ## Q2 - Acrobot TD Learning
 - `q2.ipynb` - Main notebook with all implementations and experiments
