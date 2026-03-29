@@ -42,7 +42,7 @@ class DQN(nn.Module):
 
     def forward(self, x):
         return self.layers(x)
-    
+
 class Trainer():
     def __init__(self, env, buffer_capacity=125000, batch_size=64, gamma=0.99, epsilon=1.0, epsilon_min=0.01, epsilon_decay=0.998, lr=75e-5, seed=None, use_wandb=False, wandb_project="rl-pa2", wandb_run_name=None, trunc_length=2000):
         self.env = env
@@ -91,7 +91,73 @@ class Trainer():
     def update_target_net(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def _init_q_network(self, network, seed):
+    def save_model(self, episode_rewards=None, logs_dir="logs"):
+        import os
+        run_dir = os.path.join(logs_dir, self.wandb_run_name) if self.wandb_run_name else os.path.join(logs_dir, f"seed_{self.seed}")
+        os.makedirs(run_dir, exist_ok=True)
+        
+        # Save weights
+        weights_path = os.path.join(run_dir, "policy_net.pt")
+        torch.save(self.policy_net.state_dict(), weights_path)
+        print(f"Model weights saved to {weights_path}")
+        
+        # Save training rewards
+        if episode_rewards is not None:
+            rewards_path = os.path.join(run_dir, "train_rewards.npy")
+            np.save(rewards_path, np.array(episode_rewards, dtype=np.float32))
+            print(f"Training rewards saved to {rewards_path}")
+
+    def load_model(self, weights_path):
+        """Load pretrained weights into the policy network."""
+        self.policy_net.load_state_dict(torch.load(weights_path, map_location=self.device))
+        print(f"Model weights loaded from {weights_path}")
+
+    def test(self, env, weights_path, num_episodes=1, save_results=True, logs_dir="logs", render=False):
+        max_steps = self.trunc_length
+        
+        self.load_model(weights_path)
+        self.policy_net.eval()
+        
+        test_returns = []
+        
+        for episode in range(num_episodes):
+            state, _ = env.reset()
+            episode_return = 0.0
+            episode_steps = 0
+            
+            for _ in range(max_steps):
+                # Greedy action selection (no exploration)
+                state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(self.device)
+                with torch.no_grad():
+                    q_values = self.policy_net(state_tensor)
+                action = q_values.argmax().item()
+                
+                state, reward, terminated, truncated, _ = env.step(action)
+                done = terminated or truncated
+                episode_return += reward
+                episode_steps += 1
+                
+                if render:
+                    env.render()
+                
+                if done:
+                    break
+            
+            test_returns.append(episode_return)
+            print(f"Test Episode {episode + 1}: Return = {episode_return}, Steps = {episode_steps}")
+        
+        if save_results:
+            import os
+            run_dir = os.path.join(logs_dir, self.wandb_run_name) if self.wandb_run_name else os.path.join(logs_dir, f"seed_{self.seed}")
+            os.makedirs(run_dir, exist_ok=True)
+            test_rewards_path = os.path.join(run_dir, "test_rewards.npy")
+            np.save(test_rewards_path, np.array(test_returns, dtype=np.float32))
+            print(f"Test rewards saved to {test_rewards_path}")
+        
+        self.policy_net.train()
+        return test_returns
+
+    def _init_q_network(self,network, seed):
         if seed is not None:
             torch.manual_seed(seed)
             if torch.cuda.is_available():
@@ -107,8 +173,8 @@ class Trainer():
             return
 
         env_name = getattr(getattr(self.env, "spec", None), "id", type(self.env).__name__)
-        wandb.init(
-            entity="randomteamfr",
+        self.wandb_run = wandb.init(
+            entity="rlass",
             project=self.wandb_project,
             name=self.wandb_run_name,
             tags=[
@@ -249,5 +315,7 @@ class Trainer():
         if self.use_wandb and self.wandb_run is not None:
             self.wandb_run.finish()
             self.wandb_run = None
+
+        self.save_model(episode_rewards=episode_rewards)
 
         return episode_rewards
