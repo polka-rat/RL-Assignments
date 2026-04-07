@@ -50,19 +50,18 @@ Code implementing the DQN, with provision for changing any parameters required f
 
 ## `main.ipynb`
 - Contains Q2, Q3, and Q4 d (i).
----
+
 ## `main_targetnet_sweep.py`
 - Contains implementation of Q4 d (ii).
----
+
 ## `q4_replay_factors.ipynb`
 - Contains implementation of Q4 a.
----
+
 ## `extract_q4_results.ipynb`
 - Contains data processing and analysis of logs for Q4 (Extraction for Q4 d (ii) got a bit messy as the 3 of us individually ran seeds of our own with different output directories)
----
+
 ## `dqn_bonus.py`
 - Contains original DQN with added PER implementation for bonus question.
----
+
 ## `bonus.ipynb`
 - Contains bonus question's experiments and analysis.
----
